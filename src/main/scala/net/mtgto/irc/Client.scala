@@ -1,5 +1,6 @@
 package net.mtgto.irc
 
+import config.BotConfig
 import event.{Message, PrivateMessage}
 
 import org.jibble.pircbot.PircBot
@@ -25,6 +26,10 @@ class Client(
 ) {
   protected[this] val innerClient: InnerClient = new InnerClient(setting.encoding, setting.nickname, setting.username, setting.realname, setting.delay)
 
+  protected[this] val bots: Seq[Bot] = setting.bots map {
+    bot => loadBot(bot._1, bot._2)
+  }
+
   protected[this] val channelNames: collection.mutable.HashSet[String] = collection.mutable.HashSet.empty[String]
 
   protected[this] val users: collection.mutable.HashMap[String, User] = collection.mutable.HashMap.empty[String, User]
@@ -34,8 +39,25 @@ class Client(
     innerClient.joinChannel(channel)
   }
 
+  protected def loadBot(className: String, botConfig: Option[BotConfig]): Bot = {
+    import java.net.URLClassLoader
+
+    val directory = new File("bots")
+
+    val loader = new URLClassLoader(
+      directory.list map (new File(directory, _).toURI.toURL),
+      this.getClass.getClassLoader
+    )
+    botConfig match {
+      case Some(botConfig) =>
+        loader.loadClass(className).getConstructor(botConfig.getClass).newInstance(botConfig).asInstanceOf[Bot]
+      case None =>
+        loader.loadClass(className).newInstance.asInstanceOf[Bot]
+    }
+  }
+
   protected[this] def onMessage(message: Message) = {
-    
+    bots foreach (_.onMessage(this, message))
   }
 
   def sendNotice(target: String, text: String) = {

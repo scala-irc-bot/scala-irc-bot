@@ -19,4 +19,6 @@ libraryDependencies := Seq(
 
 scalacOptions ++= Seq("-deprecation", "-unchecked", "-encoding", "UTF8")
 
+unmanagedBase in Runtime <<= baseDirectory { base => base / "bots" }
+
 initialCommands := "import net.mtgto.irc._"

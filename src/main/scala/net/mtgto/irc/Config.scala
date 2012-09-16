@@ -1,5 +1,7 @@
 package net.mtgto.irc
 
+import config.BotConfig
+
 trait Config {
   // IRC Server
   val hostname: String
@@ -16,5 +18,5 @@ trait Config {
   val channels: Array[String]
   
   // bot names
-  val bots: Array[String]
+  val bots: Array[(String, Option[BotConfig])]
 }
