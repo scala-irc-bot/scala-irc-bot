@@ -6,7 +6,9 @@ import event.{Message, PrivateMessage}
 import org.jibble.pircbot.PircBot
 import com.twitter.util.Eval
 import org.slf4j.LoggerFactory
+
 import java.io.File
+import java.util.Date
 
 object Client extends App {
   protected[this] val setting: Config = new Eval()(new File("config/Config.scala"))
@@ -80,12 +82,12 @@ class Client(
     setMessageDelay(delay)
 
     override protected def onMessage(channel: String, sender: String, login: String, hostname: String, message: String) = {
-      Client.this.onMessage(Message(channel, sender, login, hostname, message))
+      Client.this.onMessage(Message(channel, sender, login, hostname, message, new Date))
       //bots foreach (_.onMessage(this, channel, sender, login, hostname, message))
     }
 
     override protected def onPrivateMessage(sender: String, login: String, hostname: String, message: String) = {
-      val msg = PrivateMessage(sender, login, hostname, message)
+      val msg = PrivateMessage(sender, login, hostname, message, new Date)
       //bots foreach (_.onPrivateMessage(this, sender, login, hostname, message))
     }
 

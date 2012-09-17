@@ -1,3 +1,7 @@
 package net.mtgto.irc.event
 
-trait Event
+import java.util.Date
+
+trait Event {
+  val date = new Date
+}
