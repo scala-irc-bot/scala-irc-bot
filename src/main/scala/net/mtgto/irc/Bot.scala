@@ -1,7 +1,9 @@
 package net.mtgto.irc
 
-import event.Message
+import event.{Message, PrivateMessage}
 
 trait Bot {
-  def onMessage(client: Client, message: Message): Unit = {}
+  def onMessage(message: Message): Unit = {}
+
+  def onPrivateMessage(message: PrivateMessage): Unit = {}
 }

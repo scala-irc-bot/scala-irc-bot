@@ -10,38 +10,20 @@ import org.slf4j.LoggerFactory
 import java.io.File
 import java.util.Date
 
-object Client extends App {
+object Client {
   protected[this] val setting: Config = new Eval()(new File("config/Config.scala"))
 
-  protected[this] val client = new Client(setting)
-
-  while (true) {
-    val line = readLine("> ")
-    if (line == "exit") {
-      sys.exit
-    }
-  }
-}
-
-class Client(
-  val setting: Config
-) {
   protected[this] val innerClient: InnerClient = new InnerClient(setting.encoding, setting.nickname, setting.username, setting.realname, setting.delay)
-
-  protected[this] val bots: Seq[Bot] = setting.bots map {
-    bot => loadBot(bot._1, bot._2)
-  }
 
   protected[this] val channelNames: collection.mutable.HashSet[String] = collection.mutable.HashSet.empty[String]
 
   protected[this] val users: collection.mutable.HashMap[String, User] = collection.mutable.HashMap.empty[String, User]
 
-  innerClient.connect(setting.hostname, setting.port)
-  for (channel <- setting.channels) {
-    innerClient.joinChannel(channel)
+  protected[this] val bots: Seq[Bot] = setting.bots map {
+    bot => loadBot(bot._1, bot._2)
   }
 
-  protected def loadBot(className: String, botConfig: Option[BotConfig]): Bot = {
+  protected[this] def loadBot(className: String, botConfig: Option[BotConfig]): Bot = {
     import java.net.URLClassLoader
 
     val directory = new File("bots")
@@ -58,12 +40,33 @@ class Client(
     }
   }
 
-  protected[this] def onMessage(message: Message) = {
-    bots foreach (_.onMessage(this, message))
+  protected[Client] def onMessage(message: Message) = {
+    bots foreach (_.onMessage(message))
   }
 
+  protected[Client] def onPrivateMessage(message: PrivateMessage) = {
+    bots foreach (_.onPrivateMessage(message))
+  }
+  
+  /**
+   * send a notice message to the target (means the channel or username).
+   */
   def sendNotice(target: String, text: String) = {
     innerClient.sendNotice(target, text)
+  }
+
+  def main(args: Array[String]) {
+    innerClient.connect(setting.hostname, setting.port)
+    for (channel <- setting.channels) {
+      innerClient.joinChannel(channel)
+    }
+
+    while (true) {
+      val line = readLine("> ")
+      if (line == "exit") {
+        sys.exit
+      }
+    }
   }
 
   class InnerClient(
@@ -82,13 +85,11 @@ class Client(
     setMessageDelay(delay)
 
     override protected def onMessage(channel: String, sender: String, login: String, hostname: String, message: String) = {
-      Client.this.onMessage(Message(channel, sender, login, hostname, message, new Date))
-      //bots foreach (_.onMessage(this, channel, sender, login, hostname, message))
+      Client.onMessage(Message(channel, sender, login, hostname, message, new Date))
     }
 
     override protected def onPrivateMessage(sender: String, login: String, hostname: String, message: String) = {
-      val msg = PrivateMessage(sender, login, hostname, message, new Date)
-      //bots foreach (_.onPrivateMessage(this, sender, login, hostname, message))
+      Client.onPrivateMessage(PrivateMessage(sender, login, hostname, message, new Date))
     }
 
     override protected def onNotice(sourceNick: String, sourceLogin: String, sourceHostname: String, target: String, notice: String) = {
