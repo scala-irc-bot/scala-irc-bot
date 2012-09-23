@@ -1,7 +1,7 @@
 package net.mtgto.irc
 
 import config.BotConfig
-import event.{Message, PrivateMessage}
+import event._
 
 import org.jibble.pircbot.PircBot
 import com.twitter.util.Eval
@@ -47,7 +47,47 @@ object Client {
   protected[Client] def onPrivateMessage(message: PrivateMessage) = {
     bots foreach (_.onPrivateMessage(message))
   }
-  
+
+  protected[Client] def onNotice(notice: Notice) = {
+    bots foreach (_.onNotice(notice))
+  }
+
+  protected[Client] def onInvite(invite: Invite) = {
+    bots foreach (_.onInvite(invite))
+  }
+
+  protected[Client] def onJoin(join: Join) = {
+    bots foreach (_.onJoin(join))
+  }
+
+  protected[Client] def onKick(kick: Kick) = {
+    bots foreach (_.onKick(kick))
+  }
+
+  protected[Client] def onMode(mode: Mode) = {
+    bots foreach (_.onMode(mode))
+  }
+
+  protected[Client] def onTopic(topic: Topic) = {
+    bots foreach (_.onTopic(topic))
+  }
+
+  protected[Client] def onNickChange(nickChange: NickChange) = {
+    bots foreach (_.onNickChange(nickChange))
+  }
+
+  protected[Client] def onOp(op: Op) = {
+    bots foreach (_.onOp(op))
+  }
+
+  protected[Client] def onPart(part: Part) = {
+    bots foreach (_.onPart(part))
+  }
+
+  protected[Client] def onQuit(quit: Quit) = {
+    bots foreach (_.onQuit(quit))
+  }
+
   /**
    * send a notice message to the target (means the channel or username).
    */
@@ -77,7 +117,7 @@ object Client {
     val delay: Long
   ) extends PircBot {
     val logger = LoggerFactory.getLogger(this.getClass)
-    
+
     setEncoding(encoding)
     setName(nickname)
     setLogin(username)
@@ -93,44 +133,44 @@ object Client {
     }
 
     override protected def onNotice(sourceNick: String, sourceLogin: String, sourceHostname: String, target: String, notice: String) = {
-      //bots foreach (_.onNotice(this, sourceNick, sourceLogin, sourceHostname, target, notice))
+      Client.onNotice(Notice(target, sourceNick, sourceLogin, sourceHostname, notice, new Date))
     }
 
     override protected def onInvite(targetNick: String, sourceNick: String, sourceLogin: String, sourceHostname: String, channel: String) = {
-      //bots foreach (_.onInvite(this, targetNick, sourceNick, sourceLogin, sourceHostname, channel))
+      Client.onInvite(Invite(channel, targetNick, sourceNick, sourceLogin, sourceHostname, new Date))
     }
 
     override protected def onJoin(channel: String, sender: String, login: String, hostname: String) = {
-      //bots foreach (_.onJoin(this, channel, sender, login, hostname))
+      Client.onJoin(Join(channel, sender, login, hostname, new Date))
     }
 
     override protected def onKick(channel: String, kickerNick: String, kickerLogin: String, kickerHostname: String, recipientNick: String, reason: String) = {
-      //bots foreach (_.onKick(this, channel, kickerNick, kickerLogin, kickerHostname, recipientNick, reason))
+      Client.onKick(Kick(channel, recipientNick, kickerNick, kickerLogin, kickerHostname, reason, new Date))
     }
 
     override protected def onMode(channel: String, sourceNick: String, sourceLogin: String, sourceHostname: String, mode: String) = {
-      //bots foreach (_.onMode(this, channel, sourceNick, sourceLogin, sourceHostname, mode))
+      Client.onMode(Mode(channel, sourceNick, sourceLogin, sourceHostname, mode, new Date))
     }
 
     override protected def onTopic(channel: String, topic: String, setBy: String, date: Long, changed: Boolean) = {
-      //bots foreach (_.onTopic(this, channel, topic, setBy, date, changed))
+      // TODO 'changed' is ignored.
+      Client.onTopic(Topic(channel, setBy, topic, new Date(date)))
     }
 
     override protected def onNickChange(oldNick: String, login: String, hostname: String, newNick: String) = {
-      //bots foreach (_.onNickChange(this, oldNick, login, hostname, newNick))
+      Client.onNickChange(NickChange(oldNick, newNick, login, hostname, new Date))
     }
 
     override protected def onOp(channel: String, sourceNick: String, sourceLogin: String, sourceHostname: String, recipient: String) = {
-      //bots foreach (_.onOp(this, channel, sourceNick, sourceLogin, sourceHostname, recipient))
+      Client.onOp(Op(channel, recipient, sourceNick, sourceLogin, sourceHostname, new Date))
     }
 
     override protected def onPart(channel: String, sender: String, login: String, hostname: String) = {
-      //bots foreach (_.onPart(this, channel, sender, login, hostname))
+      Client.onPart(Part(channel, sender, login, hostname, new Date))
     }
 
     override protected def onQuit(sourceNick: String, sourceLogin: String, sourceHostname: String, reason: String) = {
-      //bots foreach (_.onQuit(this, sourceNick, sourceLogin, sourceHostname, reason))
+      Client.onQuit(Quit(sourceNick, sourceLogin, sourceHostname, reason, new Date))
     }
   }
-
 }
