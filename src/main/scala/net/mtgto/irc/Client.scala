@@ -3,7 +3,7 @@ package net.mtgto.irc
 import config.BotConfig
 import event._
 
-import org.jibble.pircbot.PircBot
+import org.jibble.pircbot.{PircBot, User => PircUser}
 import com.twitter.util.Eval
 import org.slf4j.LoggerFactory
 
@@ -17,7 +17,10 @@ object Client {
 
   protected[this] val channelNames: collection.mutable.HashSet[String] = collection.mutable.HashSet.empty[String]
 
-  protected[this] val users: collection.mutable.HashMap[String, User] = collection.mutable.HashMap.empty[String, User]
+  /**
+   * a map channel names to user's nicknames.
+   */
+  protected[this] val channelUsers = collection.mutable.HashMap.empty[String, collection.mutable.Set[String]]
 
   protected[this] val bots: Seq[Bot] = setting.bots map {
     bot => loadBot(bot._1, bot._2)
@@ -95,18 +98,29 @@ object Client {
     innerClient.sendNotice(target, text)
   }
 
+  /**
+   * find a bot by its FQCN.
+   */
+  def getBot(name: String): Option[Bot] = {
+    bots.find(_.getClass.getCanonicalName == name)
+  }
+
+  /**
+   * get user's nicknames in specified channel.
+   */
+  def getUsers(channel: String): Set[String] = {
+    channelUsers.get(channel).map(_.toSet).getOrElse(Set.empty[String])
+  }
+
   def main(args: Array[String]) {
     innerClient.connect(setting.hostname, setting.port)
     for (channel <- setting.channels) {
       innerClient.joinChannel(channel)
     }
 
-    while (true) {
-      val line = readLine("> ")
-      if (line == "exit") {
-        sys.exit
-      }
-    }
+    while (readLine("> ") != "exit") {}
+    innerClient.disconnect
+    innerClient.dispose
   }
 
   class InnerClient(
@@ -141,6 +155,7 @@ object Client {
     }
 
     override protected def onJoin(channel: String, sender: String, login: String, hostname: String) = {
+      channelUsers(channel) += sender
       Client.onJoin(Join(channel, sender, login, hostname, new Date))
     }
 
@@ -158,6 +173,10 @@ object Client {
     }
 
     override protected def onNickChange(oldNick: String, login: String, hostname: String, newNick: String) = {
+      for ((channel, users) <- channelUsers) {
+        users -= oldNick
+        users += newNick
+      }
       Client.onNickChange(NickChange(oldNick, newNick, login, hostname, new Date))
     }
 
@@ -166,11 +185,16 @@ object Client {
     }
 
     override protected def onPart(channel: String, sender: String, login: String, hostname: String) = {
+      channelUsers(channel) -= sender
       Client.onPart(Part(channel, sender, login, hostname, new Date))
     }
 
     override protected def onQuit(sourceNick: String, sourceLogin: String, sourceHostname: String, reason: String) = {
       Client.onQuit(Quit(sourceNick, sourceLogin, sourceHostname, reason, new Date))
+    }
+
+    override protected def onUserList(channel: String, users: Array[PircUser]) = {
+      channelUsers.getOrElseUpdate(channel, collection.mutable.Set.empty[String]) ++= users.map(_.getNick).toSet
     }
   }
 }
