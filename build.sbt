@@ -17,7 +17,7 @@ libraryDependencies := Seq(
   "com.twitter" % "util-eval" % "5.3.10",
   "ch.qos.logback" % "logback-classic" % "1.0.7",
   "junit" % "junit" % "4.10" % "test",
-  "org.specs2" %% "specs2" % "1.12.1" % "test"
+  "org.specs2" %% "specs2" % "1.12.3" % "test"
 )
 
 scalacOptions ++= Seq("-deprecation", "-unchecked", "-encoding", "UTF8")
