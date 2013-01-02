@@ -13,7 +13,7 @@ crossScalaVersions := Seq("2.9.1", "2.9.2")
 resolvers += "twitter repos" at "http://maven.twttr.com"
 
 libraryDependencies := Seq(
-  "pircbot" % "pircbot" % "1.5.0",
+  "org.pircbotx" % "pircbotx" % "1.7",
   "com.twitter" % "util-eval" % "5.3.10",
   "ch.qos.logback" % "logback-classic" % "1.0.7",
   "junit" % "junit" % "4.10" % "test",

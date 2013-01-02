@@ -16,7 +16,7 @@ trait Config {
 
   // Channels
   val channels: Array[String]
-  
+
   // bot names
   val bots: Array[(String, Option[BotConfig])]
 }

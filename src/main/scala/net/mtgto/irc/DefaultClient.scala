@@ -3,7 +3,9 @@ package net.mtgto.irc
 import config.BotConfig
 import event._
 
-import org.jibble.pircbot.{PircBot, User => PircUser}
+import org.pircbotx.{PircBotX, User => PircUser}
+import org.pircbotx.hooks.ListenerAdapter
+import org.pircbotx.hooks.events._
 import com.twitter.util.Eval
 import org.slf4j.LoggerFactory
 
@@ -25,10 +27,10 @@ object DefaultClient {
   }
 }
 
-class DefaultClient(val setting: Config) extends Client {
+class DefaultClient[T <: PircBotX](val setting: Config) extends ListenerAdapter[T] with Client {
   val logger = LoggerFactory.getLogger(this.getClass)
 
-  protected[this] val innerClient: InnerClient = new InnerClient(this)
+  protected[this] val innerClient: PircBotX = new PircBotX
 
   protected[this] val bots: Seq[Bot] = setting.bots map {
     bot => loadBot(bot._1, bot._2)
@@ -57,15 +59,24 @@ class DefaultClient(val setting: Config) extends Client {
   protected[this] val channelUsers = collection.mutable.HashMap.empty[String, collection.mutable.Set[String]]
 
   override protected[irc] def connect = {
-    innerClient.connect(setting.hostname, setting.port)
+    innerClient.setEncoding(setting.encoding)
+    innerClient.setName(setting.nickname)
+    innerClient.setLogin(setting.username)
+    innerClient.setVersion(setting.realname)
+    innerClient.setMessageDelay(setting.delay)
+    setting.password match {
+      case Some(password) =>
+        innerClient.connect(setting.hostname, setting.port, password)
+      case None =>
+        innerClient.connect(setting.hostname, setting.port)
+    }
     for (channel <- setting.channels) {
       innerClient.joinChannel(channel)
     }
   }
 
   override protected[irc] def disconnect = {
-    innerClient.disconnect
-    innerClient.dispose
+    innerClient.quitServer
   }
 
   override def getBot(name: String): Option[Bot] = {
@@ -85,120 +96,134 @@ class DefaultClient(val setting: Config) extends Client {
   }
 
   override def sendDccFile(nick: String, file: java.io.File, timeout: Int = 120000) = {
-    innerClient.dccSendFile(file, nick, timeout)
+    innerClient.dccSendFile(file, innerClient.getUser(nick), timeout)
   }
 
-  protected[DefaultClient] def onMessage(message: Message) = {
+  override def onMessage(event: MessageEvent[T]): Unit = {
+    val message = Message(
+      channel = event.getChannel.getName,
+      nickname = event.getUser.getNick,
+      username = event.getUser.getLogin,
+      hostname = event.getUser.getServer,
+      text = event.getMessage,
+      date = new Date(event.getTimestamp))
     bots foreach (_.onMessage(this, message))
   }
 
-  protected[DefaultClient] def onPrivateMessage(message: PrivateMessage) = {
-    bots foreach (_.onPrivateMessage(this, message))
+  override def onPrivateMessage(event: PrivateMessageEvent[T]) = {
+    val privateMessage = PrivateMessage(
+      nickname = event.getUser.getNick,
+      username = event.getUser.getLogin,
+      hostname = event.getUser.getServer,
+      text = event.getMessage,
+      date = new Date(event.getTimestamp))
+    bots foreach (_.onPrivateMessage(this, privateMessage))
   }
 
-  protected[DefaultClient] def onNotice(notice: Notice) = {
+  override def onNotice(event: NoticeEvent[T]) = {
+    val notice = Notice(
+      target = event.getChannel.getName,
+      sourceNickname = event.getUser.getNick,
+      sourceUsername = event.getUser.getLogin,
+      sourceHostname = event.getUser.getServer,
+      text = event.getMessage,
+      date = new Date(event.getTimestamp))
     bots foreach (_.onNotice(this, notice))
   }
 
-  protected[DefaultClient] def onInvite(invite: Invite) = {
+  override def onInvite(event: InviteEvent[T]) = {
+    val sender = event.getBot.getUser(event.getUser)
+    val invite = Invite(
+      channel = event.getChannel,
+      targetNickname = event.getBot.getUserBot.getNick,
+      sourceNickname = sender.getNick,
+      sourceUsername = sender.getLogin,
+      sourceHostname = sender.getServer,
+      date = new Date(event.getTimestamp))
     bots foreach (_.onInvite(this, invite))
   }
 
-  protected[DefaultClient] def onJoin(join: Join) = {
+  override def onJoin(event: JoinEvent[T]) = {
+    val join = Join(
+      channel = event.getChannel.getName,
+      nickname = event.getUser.getNick,
+      username = event.getUser.getLogin,
+      hostname = event.getUser.getServer,
+      date = new Date(event.getTimestamp))
     bots foreach (_.onJoin(this, join))
   }
 
-  protected[DefaultClient] def onKick(kick: Kick) = {
+  override def onKick(event: KickEvent[T]) = {
+    val kick = Kick(
+      channel = event.getChannel.getName,
+      targetNickname = event.getRecipient.getNick,
+      sourceNickname = event.getSource.getNick,
+      sourceUsername = event.getSource.getLogin,
+      sourceHostname = event.getSource.getServer,
+      reason = event.getReason,
+      date = new Date(event.getTimestamp))
     bots foreach (_.onKick(this, kick))
   }
 
-  protected[DefaultClient] def onMode(mode: Mode) = {
+  override def onMode(event: ModeEvent[T]) = {
+    val mode = Mode(
+      channel = event.getChannel.getName,
+      nickname = event.getUser.getNick,
+      username = event.getUser.getLogin,
+      hostname = event.getUser.getServer,
+      mode = event.getMode,
+      date = new Date(event.getTimestamp))
     bots foreach (_.onMode(this, mode))
   }
 
-  protected[DefaultClient] def onTopic(topic: Topic) = {
+  override def onTopic(event: TopicEvent[T]) = {
+    val topic = Topic(
+      channel = event.getChannel.getName,
+      nickname = event.getUser.getNick,
+      topic = event.getTopic,
+      date = new Date(event.getTimestamp))
     bots foreach (_.onTopic(this, topic))
   }
 
-  protected[DefaultClient] def onNickChange(nickChange: NickChange) = {
+  override def onNickChange(event: NickChangeEvent[T]) = {
+    val nickChange = NickChange(
+      oldNickname = event.getOldNick,
+      newNickname = event.getNewNick,
+      username = event.getUser.getLogin,
+      hostname = event.getUser.getServer,
+      date = new Date(event.getTimestamp))
     bots foreach (_.onNickChange(this, nickChange))
   }
 
-  protected[DefaultClient] def onOp(op: Op) = {
+  override def onOp(event: OpEvent[T]) = {
+    val op = Op(
+      channel = event.getChannel.getName,
+      targetNickname = event.getRecipient.getNick,
+      sourceNickname = event.getSource.getNick,
+      sourceUsername = event.getSource.getLogin,
+      sourceHostname = event.getSource.getServer,
+      date = new Date(event.getTimestamp))
     bots foreach (_.onOp(this, op))
   }
 
-  protected[DefaultClient] def onPart(part: Part) = {
+  override def onPart(event: PartEvent[T]) = {
+    val part = Part(
+      channel = event.getChannel.getName,
+      nickname = event.getUser.getNick,
+      username = event.getUser.getLogin,
+      hostname = event.getUser.getServer,
+      date = new Date(event.getTimestamp))
     bots foreach (_.onPart(this, part))
   }
 
-  protected[DefaultClient] def onQuit(quit: Quit) = {
+  override def onQuit(event: QuitEvent[T]) = {
+    val quit = Quit(
+      nickname = event.getUser.getNick,
+      username = event.getUser.getLogin,
+      hostname = event.getUser.getServer,
+      reason = event.getReason,
+      date = new Date(event.getTimestamp))
     bots foreach (_.onQuit(this, quit))
-  }
-
-  class InnerClient(client: DefaultClient) extends PircBot {
-    setEncoding(setting.encoding)
-    setName(setting.nickname)
-    setLogin(setting.username)
-    setVersion(setting.realname)
-    setMessageDelay(setting.delay)
-
-    override protected def onMessage(channel: String, sender: String, login: String, hostname: String, message: String) = {
-      client.onMessage(Message(channel, sender, login, hostname, message, new Date))
-    }
-
-    override protected def onPrivateMessage(sender: String, login: String, hostname: String, message: String) = {
-      client.onPrivateMessage(PrivateMessage(sender, login, hostname, message, new Date))
-    }
-
-    override protected def onNotice(sourceNick: String, sourceLogin: String, sourceHostname: String, target: String, notice: String) = {
-      client.onNotice(Notice(target, sourceNick, sourceLogin, sourceHostname, notice, new Date))
-    }
-
-    override protected def onInvite(targetNick: String, sourceNick: String, sourceLogin: String, sourceHostname: String, channel: String) = {
-      client.onInvite(Invite(channel, targetNick, sourceNick, sourceLogin, sourceHostname, new Date))
-    }
-
-    override protected def onJoin(channel: String, sender: String, login: String, hostname: String) = {
-      client.onJoin(Join(channel, sender, login, hostname, new Date))
-    }
-
-    override protected def onKick(channel: String, kickerNick: String, kickerLogin: String, kickerHostname: String, recipientNick: String, reason: String) = {
-      client.onKick(Kick(channel, recipientNick, kickerNick, kickerLogin, kickerHostname, reason, new Date))
-    }
-
-    override protected def onMode(channel: String, sourceNick: String, sourceLogin: String, sourceHostname: String, mode: String) = {
-      client.onMode(Mode(channel, sourceNick, sourceLogin, sourceHostname, mode, new Date))
-    }
-
-    override protected def onTopic(channel: String, topic: String, setBy: String, date: Long, changed: Boolean) = {
-      // TODO 'changed' is ignored.
-      client.onTopic(Topic(channel, setBy, topic, new Date))
-    }
-
-    override protected def onNickChange(oldNick: String, login: String, hostname: String, newNick: String) = {
-      for ((channel, users) <- channelUsers) {
-        users -= oldNick
-        users += newNick
-      }
-      client.onNickChange(NickChange(oldNick, newNick, login, hostname, new Date))
-    }
-
-    override protected def onOp(channel: String, sourceNick: String, sourceLogin: String, sourceHostname: String, recipient: String) = {
-      client.onOp(Op(channel, recipient, sourceNick, sourceLogin, sourceHostname, new Date))
-    }
-
-    override protected def onPart(channel: String, sender: String, login: String, hostname: String) = {
-      client.onPart(Part(channel, sender, login, hostname, new Date))
-    }
-
-    override protected def onQuit(sourceNick: String, sourceLogin: String, sourceHostname: String, reason: String) = {
-      client.onQuit(Quit(sourceNick, sourceLogin, sourceHostname, reason, new Date))
-    }
-
-    override protected def onUserList(channel: String, users: Array[PircUser]) = {
-      channelUsers.getOrElseUpdate(channel, collection.mutable.Set.empty[String]) ++= users.map(_.getNick).toSet
-    }
   }
 }
 
