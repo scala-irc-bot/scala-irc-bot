@@ -19,7 +19,7 @@ object DefaultClient {
 
   protected[this] val channelNames: collection.mutable.HashSet[String] = collection.mutable.HashSet.empty[String]
 
-  def main(args: Array[String]) {
+  def main(args: Array[String]): Unit = {
     client.connect
 
     while (readLine("> ") != "exit") {}
@@ -35,6 +35,8 @@ class DefaultClient[T <: PircBotX](val setting: Config) extends ListenerAdapter[
   protected[this] val bots: Seq[Bot] = setting.bots map {
     bot => loadBot(bot._1, bot._2)
   }
+
+  innerClient.getListenerManager.addListener(this)
 
   protected[this] def loadBot(className: String, botConfig: Option[BotConfig]): Bot = {
     import java.net.URLClassLoader
