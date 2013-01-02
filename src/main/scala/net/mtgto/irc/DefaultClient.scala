@@ -95,6 +95,10 @@ class DefaultClient[T <: PircBotX](val setting: Config) extends ListenerAdapter[
     innerClient.sendMessage(target, text)
   }
 
+  override def sendRawLine(line: String) = {
+    innerClient.sendRawLine(line)
+  }
+
   override def sendDccFile(nick: String, file: java.io.File, timeout: Int = 120000) = {
     innerClient.dccSendFile(file, innerClient.getUser(nick), timeout)
   }

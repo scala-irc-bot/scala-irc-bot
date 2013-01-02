@@ -56,6 +56,13 @@ trait Client {
   def sendMessage(target: String, text: String)
 
   /**
+   * send a raw line
+   *
+   * @param line raw message
+   */
+  def sendRawLine(line: String)
+
+  /**
    * send a file on DCC.
    *
    * @param nick The target
