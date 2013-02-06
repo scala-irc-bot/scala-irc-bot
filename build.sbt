@@ -6,9 +6,9 @@ organization := "net.mtgto"
 
 version := "0.2.0-SNAPSHOT"
 
-scalaVersion := "2.9.2"
+scalaVersion := "2.10.0"
 
-crossScalaVersions := Seq("2.9.1", "2.9.2")
+crossScalaVersions := Seq("2.9.1", "2.9.2", "2.10.0")
 
 resolvers += "twitter repos" at "http://maven.twttr.com"
 
