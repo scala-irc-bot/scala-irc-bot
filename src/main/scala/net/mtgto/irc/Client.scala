@@ -16,12 +16,17 @@ trait Client {
   /**
    * Connect to the IRC server.
    */
-  protected[irc] def connect: Unit
+  def connect: Unit
 
   /**
    * Disconnect from the IRC server.
    */
-  protected[irc] def disconnect: Unit
+  def disconnect: Unit
+
+  /**
+   * Whether or not bot is connected.
+   */
+  def isConnected: Boolean
 
   /**
    * find a bot by its FQCN.

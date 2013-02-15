@@ -60,7 +60,7 @@ class DefaultClient[T <: PircBotX](val setting: Config) extends ListenerAdapter[
    */
   protected[this] val channelUsers = collection.mutable.HashMap.empty[String, collection.mutable.Set[String]]
 
-  override protected[irc] def connect = {
+  override def connect = {
     innerClient.setEncoding(setting.encoding)
     innerClient.setName(setting.nickname)
     innerClient.setLogin(setting.username)
@@ -77,8 +77,12 @@ class DefaultClient[T <: PircBotX](val setting: Config) extends ListenerAdapter[
     }
   }
 
-  override protected[irc] def disconnect = {
+  override def disconnect = {
     innerClient.quitServer
+  }
+
+  override def isConnected: Boolean = {
+    innerClient.isConnected
   }
 
   override def getBot(name: String): Option[Bot] = {
