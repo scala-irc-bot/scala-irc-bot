@@ -29,6 +29,11 @@ trait Client {
   def isConnected: Boolean
 
   /**
+   * all loaded bots.
+   */
+  val bots: Seq[Bot]
+
+  /**
    * find a bot by its FQCN.
    *
    * @param name FQCN of the specified bot.

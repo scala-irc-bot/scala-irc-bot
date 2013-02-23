@@ -3,6 +3,8 @@ package net.mtgto.irc
 import config.BotConfig
 import event._
 
+import akka.actor.{Actor, ActorSystem, Props}
+
 import org.pircbotx.{PircBotX, User => PircUser}
 import org.pircbotx.hooks.ListenerAdapter
 import org.pircbotx.hooks.events._
@@ -32,11 +34,21 @@ class DefaultClient[T <: PircBotX](val setting: Config) extends ListenerAdapter[
 
   protected[this] val innerClient: PircBotX = new PircBotX
 
-  protected[this] val bots: Seq[Bot] = setting.bots map {
+  override val bots: Seq[Bot] = setting.bots map {
     bot => loadBot(bot._1, bot._2)
   }
 
   innerClient.getListenerManager.addListener(this)
+
+  protected[this] val actorSystem = ActorSystem("TimerSystem")
+  protected[this] val timerActor = actorSystem.actorOf(Props[TimerActor], "net.mtgto.irc.DefaultClient.TimerActor")
+
+  import actorSystem.dispatcher
+  import concurrent.duration.DurationInt
+  import language.postfixOps
+  actorSystem.scheduler.schedule(60 seconds, setting.timerIntervalMillis milliseconds) {
+    timerActor ! (this, System.currentTimeMillis)
+  }
 
   protected[this] def loadBot(className: String, botConfig: Option[BotConfig]): Bot = {
     import java.net.URLClassLoader

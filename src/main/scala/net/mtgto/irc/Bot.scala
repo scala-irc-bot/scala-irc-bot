@@ -26,4 +26,6 @@ trait Bot {
   def onPart(client: Client, part: Part) = {}
 
   def onQuit(client: Client, quit: Quit) = {}
+
+  def onTimer(client: Client) = {}
 }

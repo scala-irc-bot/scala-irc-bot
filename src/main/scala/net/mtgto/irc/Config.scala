@@ -9,6 +9,7 @@ trait Config {
   val password: Option[String]
   val encoding: String
   val delay: Int
+  val timerIntervalMillis: Int
 
   val nickname: String
   val username: String
