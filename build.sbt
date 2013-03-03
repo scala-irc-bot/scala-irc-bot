@@ -13,7 +13,7 @@ crossScalaVersions := Seq("2.10.0")
 resolvers += "Typesafe Repository" at "http://repo.typesafe.com/typesafe/releases/"
 
 libraryDependencies := Seq(
-  "org.pircbotx" % "pircbotx" % "1.7",
+  "org.pircbotx" % "pircbotx" % "1.8",
   "com.twitter" %% "util-eval" % "6.2.0",
   "com.typesafe.akka" %% "akka-actor" % "2.1.0",
   "ch.qos.logback" % "logback-classic" % "1.0.7",
