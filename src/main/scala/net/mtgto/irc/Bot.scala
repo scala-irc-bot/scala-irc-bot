@@ -3,27 +3,29 @@ package net.mtgto.irc
 import event._
 
 trait Bot {
-  def onMessage(message: Message) = {}
+  def onMessage(client: Client, message: Message) = {}
 
-  def onPrivateMessage(message: PrivateMessage) = {}
+  def onPrivateMessage(client: Client, message: PrivateMessage) = {}
 
-  def onNotice(notice: Notice) = {}
+  def onNotice(client: Client, notice: Notice) = {}
 
-  def onInvite(invite: Invite) = {}
+  def onInvite(client: Client, invite: Invite) = {}
 
-  def onJoin(join: Join) = {}
+  def onJoin(client: Client, join: Join) = {}
 
-  def onKick(kick: Kick) = {}
+  def onKick(client: Client, kick: Kick) = {}
 
-  def onMode(mode: Mode) = {}
+  def onMode(client: Client, mode: Mode) = {}
 
-  def onTopic(topic: Topic) = {}
+  def onTopic(client: Client, topic: Topic) = {}
 
-  def onNickChange(nickChange: NickChange) = {}
+  def onNickChange(client: Client, nickChange: NickChange) = {}
 
-  def onOp(op: Op) = {}
+  def onOp(client: Client, op: Op) = {}
 
-  def onPart(part: Part) = {}
+  def onPart(client: Client, part: Part) = {}
 
-  def onQuit(quit: Quit) = {}
+  def onQuit(client: Client, quit: Quit) = {}
+
+  def onTimer(client: Client) = {}
 }

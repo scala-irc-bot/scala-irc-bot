@@ -1,200 +1,83 @@
 package net.mtgto.irc
 
-import config.BotConfig
-import event._
-
-import org.jibble.pircbot.{PircBot, User => PircUser}
-import com.twitter.util.Eval
-import org.slf4j.LoggerFactory
+import org.slf4j.Logger
 
 import java.io.File
-import java.util.Date
 
-object Client {
-  protected[this] val setting: Config = new Eval()(new File("config/Config.scala"))
-
-  protected[this] val innerClient: InnerClient = new InnerClient(setting.encoding, setting.nickname, setting.username, setting.realname, setting.delay)
-
-  protected[this] val channelNames: collection.mutable.HashSet[String] = collection.mutable.HashSet.empty[String]
+/**
+ * Interface of the client which is connecting to the IRC server.
+ */
+trait Client {
+  /**
+   * The logger of this client
+   */
+  val logger: Logger
 
   /**
-   * a map channel names to user's nicknames.
+   * Connect to the IRC server.
    */
-  protected[this] val channelUsers = collection.mutable.HashMap.empty[String, collection.mutable.Set[String]]
-
-  protected[this] val bots: Seq[Bot] = setting.bots map {
-    bot => loadBot(bot._1, bot._2)
-  }
-
-  protected[this] def loadBot(className: String, botConfig: Option[BotConfig]): Bot = {
-    import java.net.URLClassLoader
-
-    val directory = new File("bots")
-
-    val loader = new URLClassLoader(
-      directory.list map (new File(directory, _).toURI.toURL),
-      this.getClass.getClassLoader
-    )
-    botConfig match {
-      case Some(botConfig) =>
-        loader.loadClass(className).getConstructor(botConfig.getClass).newInstance(botConfig).asInstanceOf[Bot]
-      case None =>
-        loader.loadClass(className).newInstance.asInstanceOf[Bot]
-    }
-  }
-
-  protected[Client] def onMessage(message: Message) = {
-    bots foreach (_.onMessage(message))
-  }
-
-  protected[Client] def onPrivateMessage(message: PrivateMessage) = {
-    bots foreach (_.onPrivateMessage(message))
-  }
-
-  protected[Client] def onNotice(notice: Notice) = {
-    bots foreach (_.onNotice(notice))
-  }
-
-  protected[Client] def onInvite(invite: Invite) = {
-    bots foreach (_.onInvite(invite))
-  }
-
-  protected[Client] def onJoin(join: Join) = {
-    bots foreach (_.onJoin(join))
-  }
-
-  protected[Client] def onKick(kick: Kick) = {
-    bots foreach (_.onKick(kick))
-  }
-
-  protected[Client] def onMode(mode: Mode) = {
-    bots foreach (_.onMode(mode))
-  }
-
-  protected[Client] def onTopic(topic: Topic) = {
-    bots foreach (_.onTopic(topic))
-  }
-
-  protected[Client] def onNickChange(nickChange: NickChange) = {
-    bots foreach (_.onNickChange(nickChange))
-  }
-
-  protected[Client] def onOp(op: Op) = {
-    bots foreach (_.onOp(op))
-  }
-
-  protected[Client] def onPart(part: Part) = {
-    bots foreach (_.onPart(part))
-  }
-
-  protected[Client] def onQuit(quit: Quit) = {
-    bots foreach (_.onQuit(quit))
-  }
+  def connect: Unit
 
   /**
-   * send a notice message to the target (means the channel or username).
+   * Disconnect from the IRC server.
    */
-  def sendNotice(target: String, text: String) = {
-    innerClient.sendNotice(target, text)
-  }
+  def disconnect: Unit
+
+  /**
+   * Whether or not bot is connected.
+   */
+  def isConnected: Boolean
+
+  /**
+   * all loaded bots.
+   */
+  val bots: Seq[Bot]
 
   /**
    * find a bot by its FQCN.
+   *
+   * @param name FQCN of the specified bot.
+   * @return bot The instance if exists.
    */
-  def getBot(name: String): Option[Bot] = {
-    bots.find(_.getClass.getCanonicalName == name)
-  }
+  def getBot(name: String): Option[Bot]
 
   /**
    * get user's nicknames in specified channel.
+   *
+   * @param channel The name of the channel
+   * @return The set of nicknames in the specified channel.
    */
-  def getUsers(channel: String): Set[String] = {
-    channelUsers.get(channel).map(_.toSet).getOrElse(Set.empty[String])
-  }
+  def getUsers(channel: String): Set[String]
 
-  def main(args: Array[String]) {
-    innerClient.connect(setting.hostname, setting.port)
-    for (channel <- setting.channels) {
-      innerClient.joinChannel(channel)
-    }
+  /**
+   * send a notice message to the target (means the channel or username).
+   *
+   * @param target name of channel or username to send a notice.
+   * @param text The text of a notice message.
+   */
+  def sendNotice(target: String, text: String)
 
-    while (readLine("> ") != "exit") {}
-    innerClient.disconnect
-    innerClient.dispose
-  }
+  /**
+   * send a message to the target (means the channel or username).
+   *
+   * @param target name of channel or username to send a message.
+   * @param text The text of a message.
+   */
+  def sendMessage(target: String, text: String)
 
-  class InnerClient(
-    val encoding: String,
-    val nickname: String,
-    val username: String,
-    val realname: String,
-    val delay: Long
-  ) extends PircBot {
-    val logger = LoggerFactory.getLogger(this.getClass)
+  /**
+   * send a raw line
+   *
+   * @param line raw message
+   */
+  def sendRawLine(line: String)
 
-    setEncoding(encoding)
-    setName(nickname)
-    setLogin(username)
-    setVersion(realname)
-    setMessageDelay(delay)
-
-    override protected def onMessage(channel: String, sender: String, login: String, hostname: String, message: String) = {
-      Client.onMessage(Message(channel, sender, login, hostname, message, new Date))
-    }
-
-    override protected def onPrivateMessage(sender: String, login: String, hostname: String, message: String) = {
-      Client.onPrivateMessage(PrivateMessage(sender, login, hostname, message, new Date))
-    }
-
-    override protected def onNotice(sourceNick: String, sourceLogin: String, sourceHostname: String, target: String, notice: String) = {
-      Client.onNotice(Notice(target, sourceNick, sourceLogin, sourceHostname, notice, new Date))
-    }
-
-    override protected def onInvite(targetNick: String, sourceNick: String, sourceLogin: String, sourceHostname: String, channel: String) = {
-      Client.onInvite(Invite(channel, targetNick, sourceNick, sourceLogin, sourceHostname, new Date))
-    }
-
-    override protected def onJoin(channel: String, sender: String, login: String, hostname: String) = {
-      channelUsers(channel) += sender
-      Client.onJoin(Join(channel, sender, login, hostname, new Date))
-    }
-
-    override protected def onKick(channel: String, kickerNick: String, kickerLogin: String, kickerHostname: String, recipientNick: String, reason: String) = {
-      Client.onKick(Kick(channel, recipientNick, kickerNick, kickerLogin, kickerHostname, reason, new Date))
-    }
-
-    override protected def onMode(channel: String, sourceNick: String, sourceLogin: String, sourceHostname: String, mode: String) = {
-      Client.onMode(Mode(channel, sourceNick, sourceLogin, sourceHostname, mode, new Date))
-    }
-
-    override protected def onTopic(channel: String, topic: String, setBy: String, date: Long, changed: Boolean) = {
-      // TODO 'changed' is ignored.
-      Client.onTopic(Topic(channel, setBy, topic, new Date(date)))
-    }
-
-    override protected def onNickChange(oldNick: String, login: String, hostname: String, newNick: String) = {
-      for ((channel, users) <- channelUsers) {
-        users -= oldNick
-        users += newNick
-      }
-      Client.onNickChange(NickChange(oldNick, newNick, login, hostname, new Date))
-    }
-
-    override protected def onOp(channel: String, sourceNick: String, sourceLogin: String, sourceHostname: String, recipient: String) = {
-      Client.onOp(Op(channel, recipient, sourceNick, sourceLogin, sourceHostname, new Date))
-    }
-
-    override protected def onPart(channel: String, sender: String, login: String, hostname: String) = {
-      channelUsers(channel) -= sender
-      Client.onPart(Part(channel, sender, login, hostname, new Date))
-    }
-
-    override protected def onQuit(sourceNick: String, sourceLogin: String, sourceHostname: String, reason: String) = {
-      Client.onQuit(Quit(sourceNick, sourceLogin, sourceHostname, reason, new Date))
-    }
-
-    override protected def onUserList(channel: String, users: Array[PircUser]) = {
-      channelUsers.getOrElseUpdate(channel, collection.mutable.Set.empty[String]) ++= users.map(_.getNick).toSet
-    }
-  }
+  /**
+   * send a file on DCC.
+   *
+   * @param nick The target
+   * @param file The file to send
+   * @param timeout Timeout milliseconds
+   */
+  def sendDccFile(nick: String, file: File, timeout: Int = 120000): Unit
 }
