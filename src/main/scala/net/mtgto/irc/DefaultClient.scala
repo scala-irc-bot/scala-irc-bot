@@ -46,7 +46,7 @@ class DefaultClient[T <: PircBotX](val setting: Config) extends ListenerAdapter[
   import actorSystem.dispatcher
   import concurrent.duration.DurationInt
   import language.postfixOps
-  actorSystem.scheduler.schedule(60 seconds, setting.timerIntervalMillis milliseconds) {
+  actorSystem.scheduler.schedule(60 seconds, setting.timerDelay milliseconds) {
     timerActor ! (this, System.currentTimeMillis)
   }
 
@@ -77,7 +77,7 @@ class DefaultClient[T <: PircBotX](val setting: Config) extends ListenerAdapter[
     innerClient.setName(setting.nickname)
     innerClient.setLogin(setting.username)
     innerClient.setVersion(setting.realname)
-    innerClient.setMessageDelay(setting.delay)
+    innerClient.setMessageDelay(setting.messageDelay)
     setting.password match {
       case Some(password) =>
         innerClient.connect(setting.hostname, setting.port, password)
