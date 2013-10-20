@@ -4,11 +4,11 @@ name := "scala-irc-bot"
 
 organization := "net.mtgto"
 
-version := "0.2.0"
+version := "0.2.1"
 
-scalaVersion := "2.10.0"
+scalaVersion := "2.10.2"
 
-crossScalaVersions := Seq("2.10.0")
+crossScalaVersions := Seq("2.10.2")
 
 resolvers += "Typesafe Repository" at "http://repo.typesafe.com/typesafe/releases/"
 
